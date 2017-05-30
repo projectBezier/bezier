@@ -31,9 +31,9 @@ def getIndexClickedPoint(x, y, pL):
     return -1
 
 def leftClick(event):
-    global cursorMode, pList
+    global cursorMode, pList, radius
     if cursorMode == 'add':
-        pList.append(point(event.x, event.y, 10))
+        pList.append(point(event.x, event.y, radius))
     elif cursorMode == 'del':
         i = getIndexClickedPoint(event.x, event.y, pList)
         if i > -1:
@@ -70,9 +70,9 @@ class point:
     def delete(self):
         scene.delete(self.body)
 
-    def update(self, x, y):
-        self.x, self.y = x, y
-        scene.coords(self.body, self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r)
+     def update(self, x, y):
++        self.x, self.y = x, y
++        scene.coords(self.body, self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r)
 
 #-- programme principal --#
 root = Tk()
@@ -106,9 +106,7 @@ canvas = Frame(controls,width = w//3, height = h//3)
 Label(canvas, text = 'CANVAS').pack()
 
 Button(canvas, text = 'se deplacer', command = lambda: changeCursorMode('movecan')).pack(padx = 5)
-zoom = Scale(canvas, from_=-100, to = 100, orient = HORIZONTAL).pack()
 rotZ = Scale(canvas, from_=-180, to = 180, orient = HORIZONTAL).pack()
-deg = Entry(canvas).pack()
 canvas.pack(ipadx = 10, ipady = 10)
 canvas.pack_propagate(0)
 
@@ -118,6 +116,7 @@ closed = Checkbutton(curve, text="courbe fermée").pack()
 c_btn = Frame(curve, width = w//3)
 Button(c_btn, text = 'bezier', command = lambda: curveMode('bezier')).pack(side = LEFT)
 Button(c_btn, text = 'spline', command = lambda: curveMode('spline')).pack(padx = 5, side = LEFT)
+deg = Entry(curve).pack()
 c_btn.pack(ipady = 15)
 c_btn.pack_propagate(0)
 curve.pack(side = TOP, ipadx = 10, ipady = 10)
