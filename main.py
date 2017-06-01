@@ -1,6 +1,7 @@
 #-- import des modules --#
 from tkinter import *
 from math import sqrt
+from time import sleep
 
 #-- creation des fonctions --#
 def changeCursorMode(mode):
@@ -44,7 +45,7 @@ def leftClick(event):
             pList.remove(pList[i])
 
 def releaseLClick(event):
-    global ptIndex
+    global ptIndex, scene
     ptIndex = -1
 
 def leftDrag(event):
@@ -58,7 +59,9 @@ def leftDrag(event):
                 ptIndex = i
                 pList[ptIndex].update(event.x, event.y)
     elif cursorMode == 'movecan':
-        pass
+        print('kk')
+        for i in range(len(pList)):
+            scene.move(pList[i], 1,0)
 
 def zoom(event):
     global scene, radius
@@ -73,14 +76,59 @@ def zoom(event):
         x = moyenne(scene.coords(pList[i].body)[0], scene.coords(pList[i].body)[2])
         y = moyenne(scene.coords(pList[i].body)[1], scene.coords(pList[i].body)[3])
         pList[i].update(x, y, radius)
-        print(pList[i].x, pList[i].y)
+
+def listeMilieux(pL):
+    temp = []
+    count = 0
+    for i in range(len(pL)-1):
+        x = (pL[i].x + pL[i+1].x)/2
+        y = (pL[i].y + pL[i+1].y)/2
+        pt = point(x,y,1, True)
+        temp.append(pt)
+        pt.delete()
+    return temp
+
+def bezier(pL, i = 0):
+    global fpts, curveLines
+    for j in range(len(fpts)-1):
+        fpts[j].delete()
+    if i == 0:
+        fpts = []
+    if len(pL) > 1 and i < 5:
+        ldata = [pL[0]]
+        rdata = [pL[-1]]
+        tempL = listeMilieux(pL)
+
+        while len(tempL) > 1:
+            ldata.append(tempL[0])
+            rdata.append(tempL[-1])
+            tempL = listeMilieux(tempL)
+
+        ldata.append(tempL[0])
+        rdata.append(tempL[0])
+        fpts.append(tempL[0])
+
+        bezier(ldata, i+1)
+        bezier(rdata, i+1)
+
+    if i == 0:
+        for j in range(len(fpts)-1):
+            fpts[j].spawn()
+            fpts[j].highlight('red')
+
+        root.after(10, lambda: bezier(pL, 0))
+
+
 
 # -- creation des classes --#
 class point:
-    def __init__(self, x, y, r):
+    def __init__(self, x, y, r, isCurve = False):
         self.x = x
         self.y = y
-        self.r = r
+        if isCurve:
+            self.r = radius//3
+        else:
+            self.r = r
         self.spawn()
     def spawn(self):
         self.body = scene.create_oval(self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r, fill = '#ffff55')
@@ -94,6 +142,9 @@ class point:
         self.x, self.y = x, y
         scene.coords(self.body, self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r)
 
+    def highlight(self, a):
+        scene.itemconfig(self.body, fill = a)
+
 #-- programme principal --#
 root = Tk()
 root.title('Bezier Project')
@@ -105,6 +156,9 @@ cursorMode = 'none'
 pList = []
 ptIndex = -1
 radius = 5
+ox = oy = 0
+fpts = []
+curveLines = []
 
 controls = Frame(root, width = w//3, height = h)
 points = Frame(controls, width = w//3, height = h//3)
@@ -135,7 +189,7 @@ curve = Frame(controls,width = w//3, height = h//3)
 Label(curve, text = 'COURBE').pack()
 closed = Checkbutton(curve, text="courbe fermée").pack()
 c_btn = Frame(curve, width = w//3)
-Button(c_btn, text = 'bezier', command = lambda: curveMode('bezier')).pack(side = LEFT)
+Button(c_btn, text = 'bezier', command = lambda: bezier(pList, 0)).pack(side = LEFT)
 Button(c_btn, text = 'spline', command = lambda: curveMode('spline')).pack(padx = 5, side = LEFT)
 deg = Entry(curve).pack()
 c_btn.pack(ipady = 15)
