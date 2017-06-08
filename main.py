@@ -94,7 +94,7 @@ def bezier(pL, i = 0):
         fpts[j].delete()
     if i == 0:
         fpts = []
-    if len(pL) > 1 and i < 5:
+    if len(pL) > 1 and i < 6:
         ldata = [pL[0]]
         rdata = [pL[-1]]
         tempL = listeMilieux(pL)
@@ -117,8 +117,6 @@ def bezier(pL, i = 0):
             fpts[j].highlight('red')
 
         root.after(10, lambda: bezier(pL, 0))
-
-
 
 # -- creation des classes --#
 class point:
