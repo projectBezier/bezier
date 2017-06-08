@@ -1,26 +1,11 @@
 #-- import des modules --#
 from tkinter import *
-from math import sqrt
+from math import sqrt, factorial
+
+#-- variables locales --#
+global cursorMode, curveMode, scene, pList, curvePts, curveLns, radius, ptIndex
 
 #-- creation des fonctions --#
-def changeCursorMode(mode):
-    global cursorMode, scene
-    if mode == 'add':
-        scene.configure(cursor = 'tcross')
-    elif mode == 'del':
-        scene.configure(cursor = 'circle')
-    elif mode == 'movept':
-        scene.configure(cursor = 'hand1')
-    elif mode == 'movecan':
-        scene.configure(cursor = 'hand1')
-    cursorMode = mode
-
-def delAll():
-    global pList
-    while len(pList) > 0:
-        pList[0].delete()
-        pList.remove(pList[0])
-
 def distance(x1, y1, x2, y2):
     return sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
 
@@ -33,23 +18,91 @@ def getIndexClickedPoint(x, y, pL):
             return i
     return -1
 
+def changeCursorMode(mode):
+    global cursorMode
+    if mode == 'add':
+        scene.configure(cursor = 'tcross')
+    elif mode == 'del':
+        scene.configure(cursor = 'circle')
+    elif mode == 'mvpt':
+        scene.configure(cursor = 'hand1')
+    elif mode == 'mvcan':
+        scene.configure(cursor = 'hand1')
+    cursorMode = mode
+
+def rotate(event):
+    pass
+
+def listeMilieux(pL):
+    temp = []
+    count = 0
+    for i in range(len(pL)-1):
+        x = (pL[i].x + pL[i+1].x)/2
+        y = (pL[i].y + pL[i+1].y)/2
+        pt = point(x,y,1)
+        temp.append(pt)
+    return temp
+
+def bezierbern(l):
+    n=len(l)-1
+    points = []
+    t = 0
+    factN = factorial(n)
+    while t <= 1:
+        Px = Py = 0
+        for i in range(n+1):
+            if i == 0:
+                factI = 1
+                factNI = factN
+            else:
+                factI = factI*i
+                factNI = factNI / (n-i+1)
+            B=((factN)/(factI*factNI))*t**(i)*(1-t)**(n-i)
+            Px+=B*l[i].x
+            Py+=B*l[i].y
+        points.append(point(Px, Py, 0))
+        t += 0.01
+    return points
+
+
+def getCurve():
+    global curveMode
+    for i in curveLns:
+        scene.delete(i)
+    if curveMode == 'bezier':
+        fpts = bezierbern(pList)
+    elif curveMode == 'spline':
+        pass
+    for i in range(len(fpts)-1):
+        curveLns.append(scene.create_line(fpts[i].x, fpts[i].y, fpts[i+1].x, fpts[i+1].y, width = 2))
+
+def changeCurveMode(m):
+    global curveMode
+    curveMode = m
+    getCurve()
+
 def leftClick(event):
-    global cursorMode, pList, radius
+    global curveMode
     if cursorMode == 'add':
-        pList.append(point(event.x, event.y, radius))
+        pList.append(point(event.x, event.y, radius, outline = 'black'))
     elif cursorMode == 'del':
         i = getIndexClickedPoint(event.x, event.y, pList)
         if i > -1:
             pList[i].delete()
             pList.remove(pList[i])
+    if curveMode != '':
+        getCurve()
 
-def releaseLClick(event):
-    global ptIndex
-    ptIndex = -1
+def delAll():
+    while len(pList) > 0:
+        pList[0].delete()
+        pList.remove(pList[0])
+    if curveMode != '':
+        getCurve()
 
 def leftDrag(event):
-    global cursorMode, pList, ptIndex
-    if cursorMode == 'movept':
+    global ptIndex, curveMode
+    if cursorMode == 'mvpt':
         if ptIndex != -1:
             pList[ptIndex].update(event.x, event.y)
         else:
@@ -57,11 +110,17 @@ def leftDrag(event):
             if i != -1:
                 ptIndex = i
                 pList[ptIndex].update(event.x, event.y)
-    elif cursorMode == 'movecan':
-        pass
+    elif cursorMode == 'mvcan':
+        scene.coords(ALL, event.x, event.y)
+    if curveMode != '':
+        getCurve()
+
+def releaseLClick(event):
+    global ptIndex
+    ptIndex = -1
 
 def zoom(event):
-    global scene, radius
+    global radius
     if event.num == 4:
         radius = radius * 1.1
         scene.scale("all", event.x, event.y, 1.1, 1.1)
@@ -73,85 +132,77 @@ def zoom(event):
         x = moyenne(scene.coords(pList[i].body)[0], scene.coords(pList[i].body)[2])
         y = moyenne(scene.coords(pList[i].body)[1], scene.coords(pList[i].body)[3])
         pList[i].update(x, y, radius)
-        print(pList[i].x, pList[i].y)
 
 # -- creation des classes --#
 class point:
-    def __init__(self, x, y, r):
+    def __init__(self, x, y, r = 0, color = 'blue', outline = ''):
         self.x = x
         self.y = y
         self.r = r
-        self.spawn()
-    def spawn(self):
-        self.body = scene.create_oval(self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r, fill = '#ffff55')
-
-    def delete(self):
-        scene.delete(self.body)
+        self.body = scene.create_oval(self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r, fill = color, outline= outline)
 
     def update(self, x, y, r = 'none'):
         if r != 'none':
             self.r = r
         self.x, self.y = x, y
-        scene.coords(self.body, self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r)
+        scene.coords(self.body, x-self.r, y-self.r, x+self.r, y+self.r)
+
+    def changeColor(self, color):
+        scene.itemconfig(self.body, fill = color)
+
+    def delete(self):
+        scene.delete(self.body)
 
 #-- programme principal --#
 root = Tk()
 root.title('Bezier Project')
 root.attributes('-zoomed', True)
 root.configure(bg = '#202020')
+
 w, h = root.winfo_screenwidth(), root.winfo_screenheight()
-
-cursorMode = 'none'
+color1 = '#202020'
+color2 = '#f4f4f4'
+closedCurve = False
+degree = 1
+cursorMode = ''
 pList = []
+curveLns = []
+curveMode = ''
+radius = 10
 ptIndex = -1
-radius = 5
 
-controls = Frame(root, width = w//3, height = h)
-points = Frame(controls, width = w//3, height = h//3)
-Label(points, text = 'POINTS').pack()
+controls = Frame(root, bg = color1, width = 600, height = h-150)
 
-p_btn = Frame(points, width = w//3)
-Button(p_btn, text = 'ajouter', command = lambda: changeCursorMode('add')).pack(side = LEFT)
-Button(p_btn, text = 'supprimer', command = lambda: changeCursorMode('del')).pack(padx = 5, side = LEFT)
-Button(p_btn, text = 'deplacer', command = lambda: changeCursorMode('movept')).pack(side = LEFT)
-Button(p_btn, text = 'reinitialiser', command = delAll).pack(side = RIGHT)
-p_btn.pack(ipady = 15)
-p_btn.pack_propagate(0)
+c_pts = LabelFrame(controls, bg = color1, fg = color2, text = 'Points', width = 200)
 
-#faire des inputs pour coords X,Y,Z avec les valeurs du point selectionné notées de base
+Button(c_pts, text = 'ajouter', command = lambda:changeCursorMode('add'), relief = FLAT).pack(side = LEFT, padx = 5, pady = 5)
+Button(c_pts, text = 'supprimer', command = lambda:changeCursorMode('del'), relief = FLAT).pack(side = LEFT, padx = 5, pady = 5)
+Button(c_pts, text = 'deplacer', command = lambda:changeCursorMode('mvpt'), relief = FLAT).pack(side = LEFT, padx = 5, pady = 5)
+Button(c_pts, text = 'reinitialiser', command = delAll, relief = FLAT).pack(side = RIGHT, padx = 5, pady = 5)
+c_pts.pack(padx = 10, pady = 5)
+c_can = LabelFrame(controls, bg = color1, fg = color2, text = 'Canvas', width = 200)
 
-points.pack(ipadx = 10, ipady = 10)
-points.pack_propagate(0)
+Button(c_can, text = 'se deplacer', command = lambda:changeCursorMode('mvcan'), relief = FLAT).grid(row = 0, sticky = W, padx = 5, pady = 5)
+Scale(c_can, from_ = -180, to = 180, label = 'rotation', bg = color1, fg = color2, length = 150, sliderrelief = FLAT, orient = HORIZONTAL, command = rotate).grid(row = 0, column = 1, padx = 5, pady = 5)
+c_can.pack(padx = 10, pady = 5)
+c_crv = LabelFrame(controls, bg = color1, fg = color2, text = 'Courbe', width = 200)
 
-canvas = Frame(controls,width = w//3, height = h//3)
-Label(canvas, text = 'CANVAS').pack()
+Button(c_crv, text = 'bezier', command = lambda:changeCurveMode('bezier'), relief = FLAT).grid(row = 0, column = 0, padx = 5, pady = 5)
+Button(c_crv, text = 'spline', command = lambda:changeCurveMode('spline'), relief = FLAT).grid(row = 1, column = 0, padx = 5, pady = 5)
+Checkbutton(c_crv, text = 'courbe fermee', bg = color1, fg = color2, selectcolor = color1, variable = closedCurve, onvalue = True, offvalue = False).grid(row = 0, column = 1, padx = 5, pady = 5)
+Entry(c_crv, textvariable = degree, width = 14).grid(row = 1, column = 1, padx = 5, pady = 5)
+c_crv.pack(padx = 10, pady = 5)
 
-Button(canvas, text = 'se deplacer', command = lambda: changeCursorMode('movecan')).pack(padx = 5)
-rotZ = Scale(canvas, from_=-180, to = 180, orient = HORIZONTAL).pack()
-canvas.pack(ipadx = 10, ipady = 10)
-canvas.pack_propagate(0)
-
-curve = Frame(controls,width = w//3, height = h//3)
-Label(curve, text = 'COURBE').pack()
-closed = Checkbutton(curve, text="courbe fermée").pack()
-c_btn = Frame(curve, width = w//3)
-Button(c_btn, text = 'bezier', command = lambda: curveMode('bezier')).pack(side = LEFT)
-Button(c_btn, text = 'spline', command = lambda: curveMode('spline')).pack(padx = 5, side = LEFT)
-deg = Entry(curve).pack()
-c_btn.pack(ipady = 15)
-c_btn.pack_propagate(0)
-curve.pack(side = TOP, ipadx = 10, ipady = 10)
-curve.pack_propagate(0)
-
-controls.pack(side = LEFT)
+Button(controls, text='quitter', bg = color1, fg = color2, command = root.quit, relief = FLAT).pack(side = BOTTOM, pady = 10)
+controls.pack(side = LEFT, padx = 15)
 controls.pack_propagate(0)
 
-scene = Canvas(root, width = 2*w//3, height = h, bg = '#f4f4f4')
+scene = Canvas(root, width = w-600, height = h-150)
 scene.bind("<Button-1>", leftClick)
 scene.bind("<ButtonRelease-1>", releaseLClick)
 scene.bind("<B1-Motion>", leftDrag)
 scene.bind("<Button-4>", zoom)
 scene.bind("<Button-5>", zoom)
 
-scene.pack(side = RIGHT)
+scene.pack(side = RIGHT, padx = 15)
 root.mainloop()
