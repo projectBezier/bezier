@@ -8,7 +8,7 @@ from math import sqrt
 
 #-- creation des fonctions --#
 def distance(x1, y1, x2, y2):
-    return sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
+    return sqrt((x1-x2)**2+(y1-y2)**2)
 
 def moving():
     global plyr, ismoving, keyhist, jump
@@ -22,7 +22,7 @@ def moving():
             plyr.v[0] = -plyr.speed
         elif key == 'd':
             plyr.v[0] = plyr.speed
-    ismoving = root.after(50, moving)
+    ismoving = root.after(20, moving)
 
 def controls(event):
     global holdkey, keyhist
@@ -66,36 +66,66 @@ class perso(object):
         else:
             c.delete(self.body)
 
-
-    def hitsurface(self):
-        global terrain, size
+    def ishitting(self):
+        global size, jump
         for i in terrain:
-            if distance(self.x, 0, i.x, 0) <= size:
-                pass
+            c.itemconfig(i.body, fill = 'white')
+            if self.v[1] < 0 and distance(self.x, 0, (i.x+i.X)/2, 0) < 2*size:
+                if distance(self.y, 0, i.Y, 0) <= size:
+                    self.v[1] = 0
+                    self.y = i.Y+size
+            elif self.v[1] > 0 and distance(self.x, 0, (i.x+i.X)/2, 0) < 2*size:
+                if distance(self.y, 0, i.y, 0) < size:
+                    self.v[1] = 0
+                    self.y = i.y-size
+                    jump = 0
+                elif distance(self.y, 0, i.y, 0) == size:
+                    self.v[1] = 0
+                    jump = 0
+
+            if self.v[0] < 0 and distance(self.y, 0, (i.y+i.Y)/2, 0) < 2*size:
+                if distance(self.x, 0, i.X, 0) < size:
+                    self.v[0] = 0
+                    self.x = i.X + size
+                    jump = 0
+                elif distance(self.x, 0, i.X, 0) == size:
+                    self.v[0] = 0
+                    jump = 0
+            elif self.v[0] > 0 and distance(self.y, 0, (i.y+i.Y)/2, 0) < 2*size:
+                if distance(self.x, 0, i.x, 0) < size:
+                    self.v[0] = 0
+                    self.x = i.x - size
+                    jump = 0
+                elif distance(self.x, 0, i.x, 0) == size:
+                    self.v[0] = 0
+                    jump = 0
+
 
     def update(self):
         self.v[0] += self.a[0]
         self.v[1] += self.a[1]
-        self.x +=  self.v[0]
+        self.ishitting()
+        self.x += self.v[0]
         self.y += self.v[1]
-        self.hitsurface()
         self.show()
-        root.after(33, self.update)
+        root.after(20, self.update)
 
 class block(object):
     def __init__(self, x, y):
         self.x, self.y = x, y
-        self.body = c.create_rectangle(x, y, x+size, y+size, fill = 'white')
+        self.X, self.Y = x+2*size, y+2*size
+        self.body = c.create_rectangle(x, y, self.X, self.Y, fill = 'white')
 
 
 #-- programme principal --#
 mapArray = lire_txt('terrain.data')
 size = 10
-h = len(mapArray)*size
+h = len(mapArray)*2*size
 if h > 0:
-    w = len(mapArray[0])*size
+    w = len(mapArray[0])*2*size
 else:
     w = 640
+print(w,h)
 holdkey = 'none'
 ismoving = None
 keyhist = []
@@ -114,8 +144,7 @@ terrain = []
 for i in range(len(mapArray)):
     for j in range(len(mapArray[0])):
         if mapArray[i][j] == '#':
-            print(i, j)
-            terrain.append(block(j*size, i*size))
+            terrain.append(block(2*j*size, 2*i*size))
 
 plyr = perso()
 moving()
