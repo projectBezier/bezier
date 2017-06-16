@@ -69,9 +69,9 @@ for i in range(20):
 
 c.pack(side = LEFT, padx = 20, pady = 20)
 Label(root, text = 'Créez votre niveau et jouez-y:\nIl faut un seul personnage, des murs et au moins une pièce.', bg = '#168BCE', fg = 'white').pack(padx = 20, pady = 20)
-Button(root, text = 'ajouter des murs', command = lambda: switchMode('black'), fg = 'white', bg = '#168BCE', activebackground = '#27ADF9', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
-Button(root, text = 'supprimer les elements', command = lambda: switchMode('white'), fg = 'white', bg = '#168BCE', activebackground = '#27ADF9', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
-Button(root, text = 'ajouter des pieces', command = lambda: switchMode('yellow'), fg = 'white', bg = '#168BCE', activebackground = '#27ADF9', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
+Button(root, text = 'ajouter des murs', command = lambda: switchMode('black'), fg = 'white', bg = '#168BCE', activebackground = '#269BDE', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
+Button(root, text = 'supprimer les elements', command = lambda: switchMode('white'), fg = 'white', bg = '#168BCE', activebackground = '#269BDE', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
+Button(root, text = 'ajouter des pieces', command = lambda: switchMode('yellow'), fg = 'white', bg = '#168BCE', activebackground = '#269BDE', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
 Button(root, text = 'ajouter le personnage', command = lambda: switchMode('#27ADF9'), fg = 'white', bg = '#168BCE', activebackground = '#00BBFF', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
-Button(root, text='Creer la carte', command = createmap, fg = 'white', bg = '#168BCE', activebackground = '#27ADF9', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
+Button(root, text='Creer la carte', command = createmap, fg = 'white', bg = '#168BCE', activebackground = '#269BDE', activeforeground = 'white', relief = FLAT).pack(padx = 20, pady = 20)
 root.mainloop()

@@ -13,14 +13,14 @@ def distance(x1, y1, x2, y2):
 def moving():
     global plyr, ismoving, keyhist, jump
     for key in keyhist:
-        if key == 'z':
-            keyhist.remove('z')
+        if key == 'Up':
+            keyhist.remove('Up')
             if jump < 2:
                 jump += 1
                 plyr.v[1] = -10
-        elif key == 'q':
+        elif key == 'Left':
             plyr.v[0] = -plyr.speed
-        elif key == 'd':
+        elif key == 'Right':
             plyr.v[0] = plyr.speed
     ismoving = root.after(20, moving)
 
@@ -32,7 +32,7 @@ def controls(event):
 
 def releasecontrols(event):
     global holdkey, ismoving, plyr, keyhist, jump
-    if event.keysym != 'z':
+    if event.keysym != 'Up':
         keyhist.remove(event.keysym)
     if keyhist == []:
         plyr.v[0] = 0

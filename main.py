@@ -86,6 +86,37 @@ def splinequad(temp):
         a0=a
     return points
 
+def splineb(l,T,d):
+    n=len(l)
+    points = []
+    if n > 2:
+        t = 0
+        while t <= 1:
+            Px = Py = 0
+            for i in range(n):
+                A=B(i,d,t,T)
+                Px+=A*l[i].x
+                Py+=A*l[i].y
+            points.append(point(Px, Py, 0))
+            t += 0.01
+        points.append(l[-1])
+    return points
+
+def B(i,d,t,T):
+    if d==0:
+        if T[i] <= t< T[i+1]:
+            b=1
+        else:
+            b=0
+    else:
+        if T[i+d]-T[i]==0:
+            b=(T[i+d+1]-t)/(T[i+d+1]-T[i+1])*B(i+1,d-1,t,T)
+        elif T[i+d+1]-T[i+1]==0:
+            b=(t-T[i])/(T[i+d]-T[i])*B(i,d-1,t,T)
+        else :
+            b=(t-T[i])/(T[i+d]-T[i])*B(i,d-1,t,T)+(T[i+d+1]-t)/(T[i+d+1]-T[i+1])*B(i+1,d-1,t,T)
+    return b
+
 def splinec(temp):
     global closedCurve
     l = list(copy(temp))
@@ -166,23 +197,42 @@ def getCurve():
         while len(pList) < 3:
             pList.append(point(randint(0, w-600), randint(0, h-150), radius))
         fpts = splinec(pList)
+    elif curveMode == 'bspline':
+        changed = False
+        while len(pList) < 2*bspl.degree.get()+1:
+            changed = True
+            pList.append(point(randint(radius, w-700), randint(radius, h-250), radius))
+        if changed:
+            bspl.updatecan(0)
+        fpts = splineb(pList, bspl.getValues(), bspl.degree.get())
     for i in range(len(fpts)-1):
         curveLns.append(scene.create_line(fpts[i].x, fpts[i].y, fpts[i+1].x, fpts[i+1].y, width = 2))
 
 def changeCurveMode(m):
-    global curveMode
+    global curveMode, bspl
     curveMode = m
+    if curveMode == 'bspline' and bspl == None:
+        bspl = bsnds()
+    elif curveMode != 'bspline' and bspl != None:
+        bspl.c.destroy()
+        bspl.degreescale.destroy()
+        bspl = None
+
     getCurve()
 
 def leftClick(event):
-    global curveMode, ptIndex
+    global curveMode, ptIndex, bspl
     if cursorMode == 'add':
         pList.append(point(event.x, event.y, radius, outline = 'black'))
+        if bspl != None:
+            bspl.updatecan(0)
     elif cursorMode == 'del':
         i = getIndexClickedPoint(event.x, event.y, pList)
         if i > -1:
             pList[i].delete()
             pList.remove(pList[i])
+            if bspl != None:
+                bspl.updatecan(0)
     elif cursorMode == 'mvpt':
         i = getIndexClickedPoint(event.x, event.y, pList)
         if i != -1:
@@ -194,6 +244,8 @@ def delAll():
     while len(pList) > 0:
         pList[0].delete()
         pList.remove(pList[0])
+    if bspl != None:
+        bspl.updatecan(0)
     if curveMode != '':
         getCurve()
 
@@ -242,23 +294,27 @@ def launchminigame():
 
 # -- creation des classes --#
 class point:
-    def __init__(self, x, y, r = 0, color = 'blue', outline = '', spline = False):
+    def __init__(self, x, y, r = 0, color = 'blue', outline = '', parent = None):
         self.x = x
         self.y = y
         self.r = r
-        self.body = scene.create_oval(self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r, fill = color, outline= outline)
+        if parent == None:
+            self.parent = scene
+        else:
+            self.parent = parent
+        self.body = self.parent.create_oval(self.x-self.r, self.y-self.r, self.x+self.r, self.y+self.r, fill = color, outline= outline)
 
     def update(self, x, y, r = 'none'):
         if r != 'none':
             self.r = r
         self.x, self.y = x, y
-        scene.coords(self.body, x-self.r, y-self.r, x+self.r, y+self.r)
+        self.parent.coords(self.body, x-self.r, y-self.r, x+self.r, y+self.r)
 
     def changeColor(self, color):
-        scene.itemconfig(self.body, fill = color)
+        self.parent.itemconfig(self.body, fill = color)
 
     def delete(self):
-        scene.delete(self.body)
+        self.parent.delete(self.body)
 
 class pointSelector:
     def __init__(self):
@@ -290,6 +346,83 @@ class pointSelector:
             self.variables[1].set('aucun point')
         root.after(10, self.checkvalue)
 
+class bsnds:
+    def __init__(self):
+        self.degree = IntVar()
+        self.degreescale = Scale(c_crv, bg = color1, fg = color2,variable = self.degree, orient='horizontal', from_=1, to=4, tickinterval=1, length=100, label='Degré', command = self.updatecan)
+        self.degree.set(1)
+        self.degreescale.grid(row = 4, column = 1, padx = 5, pady = 5)
+        self.c = Canvas(c_crv, width = 200, height = 20, bg = '#F4F4F4')
+        self.c.bind("<ButtonRelease-1>", self.rlsLC)
+        self.c.bind("<B1-Motion>", self.lDrag)
+
+        num = self.degree.get()+1+len(pList)
+        if num == 0:
+            temp = 0
+        else:
+            temp = 200/num
+        self.pts = []
+        self.index = -1
+        for i in range(num):
+            p = point(i*temp+temp/2, 10, 5, 'yellow', 'black', self.c)
+            self.pts.append(p)
+        self.c.grid(row = 4, column = 0, padx = 5, pady = 5)
+
+    def updatecan(self, a):
+        for i in self.pts:
+            i.delete()
+        num = self.degree.get()+1+len(pList) - 2*self.degree.get()-2
+        if num == 0:
+            temp = 0
+        else:
+            temp = 200/num
+        self.pts = []
+        for i in range(num):
+            p = point(i*temp+temp/2, 10, 5, 'yellow', 'black', self.c)
+            self.pts.append(p)
+        getCurve()
+
+
+    def lDrag(self, event):
+        x1, y1 = event.x, event.y
+        if self.index != -1:
+            t = self.pts[self.index]
+            if self.index > 0 and x1 < self.pts[self.index-1].x:
+                t.update(self.pts[self.index-1].x, t.y)
+            elif self.index < len(self.pts)-1 and x1 > self.pts[self.index+1].x:
+                t.update(self.pts[self.index+1].x, t.y)
+            else:
+                t.update(x1, t.y)
+            if t.x < 0:
+                t.update(0, t.y)
+            elif t.x > 200:
+                t.update(200, t.y)
+
+        else:
+            found = False
+            for i in range(len(self.pts)):
+                if distance(x1, y1, self.pts[i].x, self.pts[i].y) <= 7:
+                    self.index = i
+                    found = True
+                    break
+            if not(found):
+                self.index = -1
+        getCurve()
+
+    def rlsLC(self, event):
+        self.index = -1
+
+    def getValues(self):
+        temp = []
+        num = self.degree.get()+1
+        for i in range(num):
+            temp.append(0)
+        for i in self.pts:
+            temp.append(i.x/200)
+        for i in range(self.degree.get()+1):
+            temp.append(num)
+        return temp
+
 #-- programme principal --#
 root = Tk()
 root.title('Bezier Project')
@@ -308,6 +441,7 @@ curveLns = []
 curveMode = ''
 radius = 10
 ptIndex = -1
+bspl = None
 closedCurve = BooleanVar()
 
 controls = Frame(root, bg = color1, width = 600, height = h-150)
@@ -328,13 +462,14 @@ c_crv = LabelFrame(controls, bg = color1, fg = color2, text = 'Courbe', width = 
 Button(c_crv, text = 'bezier', command = lambda:changeCurveMode('bezier'), relief = FLAT).grid(row = 0, column = 0, padx = 5, pady = 5)
 Button(c_crv, text = 'spline²', command = lambda:changeCurveMode('spline'), relief = FLAT).grid(row = 1, column = 0, padx = 5, pady = 5)
 Button(c_crv, text = 'spline³', command = lambda:changeCurveMode('splinec'), relief = FLAT).grid(row = 2, column = 0, padx = 5, pady = 5)
+Button(c_crv, text = 'bspline', command = lambda:changeCurveMode('bspline'), relief = FLAT).grid(row = 2, column = 1, padx = 5, pady = 5)
 Checkbutton(c_crv, text = 'courbe fermee', bg = color1, fg = color2, selectcolor = color1, variable = closedCurve, onvalue = True, offvalue = False, command = getCurve).grid(row = 0, column = 1, padx = 5, pady = 5)
 c_crv.pack(padx = 10, pady = 5)
 
 pointSelector = pointSelector()
 
 Button(controls, text='quitter', bg = color1, fg = color2, command = root.quit, relief = FLAT).pack(side = BOTTOM, pady = 10)
-Button(controls, text = 'mini jeu', bg = color1, fg = color2, command = launchminigame, relief = FLAT).pack(side = BOTTOM, padx = 5, pady = 5)
+Button(controls, text = 'minijeu', bg = color1, fg = color2, command = launchminigame, relief = FLAT).pack(side = BOTTOM, padx = 5, pady = 5)
 
 controls.pack(side = LEFT, padx = 15)
 controls.pack_propagate(0)
